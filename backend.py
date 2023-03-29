@@ -17,13 +17,14 @@ from orderbook import OrderBookProcessor
 
 load_dotenv()
 
-ACCESS_KEY = os.environ.get("API_KEY")
-SECRET_KEY = os.environ.get("SECRET_KEY")
-PASSPHRASE = os.environ.get("PASSPHRASE")
-SVC_ACCOUNTID = os.environ.get("SVC_ACCOUNTID")
+ACCESS_KEY = os.environ.get('API_KEY')
+SECRET_KEY = os.environ.get('SECRET_KEY')
+PASSPHRASE = os.environ.get('PASSPHRASE')
+SVC_ACCOUNTID = os.environ.get('SVC_ACCOUNTID')
 
 URI = 'wss://ws-feed.prime.coinbase.com'
-TIMESTAMP = str(int(time.time()))
+
+timestamp = str(int(time.time()))
 conn = sqlite3.connect('prime_orderbook.db')
 channel = 'l2_data'
 
@@ -32,46 +33,21 @@ agg_level = '0.1'
 row_count = '50'
 
 
-async def create_auth_message(channel, ACCESS_KEY, SECRET_KEY, SVC_ACCOUNTID, product_id, PASSPHRASE, TIMESTAMP):
-    signature = sign(
-        channel,
-        ACCESS_KEY,
-        SECRET_KEY,
-        SVC_ACCOUNTID,
-        product_id,
-    )
-    auth_message = json.dumps({
-        'type': 'subscribe',
-        'channel': channel,
-        'access_key': ACCESS_KEY,
-        'api_key_id': SVC_ACCOUNTID,
-        'timestamp': TIMESTAMP,
-        'passphrase': PASSPHRASE,
-        'signature': signature,
-        'product_ids': [product_id],
-    })
-    return auth_message
-
-
 async def main_loop():
     while True:
         try:
             async with websockets.connect(URI, ping_interval=None, max_size=None) as websocket:
                 auth_message = await create_auth_message(
                     channel,
-                    ACCESS_KEY,
-                    SECRET_KEY,
-                    SVC_ACCOUNTID,
                     product_id,
-                    PASSPHRASE,
-                    TIMESTAMP
+                    timestamp
                 )
                 await websocket.send(auth_message)
                 while True:
                     response = await websocket.recv()
                     parsed = json.loads(response)
 
-                    if parsed["channel"] == "l2_data" and parsed["events"][0]["type"] == "snapshot":
+                    if parsed['channel'] == 'l2_data' and parsed['events'][0]['type'] == 'snapshot':
                         processor = OrderBookProcessor(response)
                     elif processor is not None:
                         processor.apply_update(response)
@@ -84,8 +60,29 @@ async def main_loop():
             continue
 
 
+async def create_auth_message(channel, product_id, timestamp):
+    signature = sign(
+        channel,
+        ACCESS_KEY,
+        SECRET_KEY,
+        SVC_ACCOUNTID,
+        product_id
+    )
+    auth_message = json.dumps({
+        'type': 'subscribe',
+        'channel': channel,
+        'access_key': ACCESS_KEY,
+        'api_key_id': SVC_ACCOUNTID,
+        'timestamp': timestamp,
+        'passphrase': PASSPHRASE,
+        'signature': signature,
+        'product_ids': [product_id],
+    })
+    return auth_message
+
+
 def sign(channel, key, secret, account_id, product_ids):
-    message = channel + key + account_id + TIMESTAMP + product_ids
+    message = channel + key + account_id + timestamp + product_ids
     signature = hmac.new(
         SECRET_KEY.encode('utf-8'),
         message.encode('utf-8'),
@@ -94,5 +91,5 @@ def sign(channel, key, secret, account_id, product_ids):
     return signature_b64
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     asyncio.run(main_loop())

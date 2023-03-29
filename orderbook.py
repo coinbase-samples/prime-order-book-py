@@ -21,12 +21,12 @@ class OrderBookProcessor():
         self.bids = []
         self.offers = []
         snapshot_data = json.loads(snapshot)
-        px_levels = snapshot_data["events"][0]["updates"]
+        px_levels = snapshot_data['events'][0]['updates']
         for i in range(len(px_levels)):
             level = px_levels[i]
-            if level["side"] == "bid":
+            if level['side'] == 'bid':
                 self.bids.append(level)
-            elif level["side"] == "offer":
+            elif level['side'] == 'offer':
                 self.offers.append(level)
             else:
                 raise IOError()
@@ -34,21 +34,21 @@ class OrderBookProcessor():
 
     def apply_update(self, data):
         event = json.loads(data)
-        if event["channel"] != "l2_data":
+        if event['channel'] != 'l2_data':
             return
-        events = event["events"]
+        events = event['events']
         for e in events:
-            updates = e["updates"]
+            updates = e['updates']
             for update in updates:
                 self._apply(update)
         self._filter_closed()
         self._sort()
 
     def _apply(self, level):
-        if level["side"] == "bid":
+        if level['side'] == 'bid':
             found = False
             for i in range(len(self.bids)):
-                if self.bids[i]["px"] == level["px"]:
+                if self.bids[i]['px'] == level['px']:
                     self.bids[i] = level
                     found = True
                     break
@@ -57,7 +57,7 @@ class OrderBookProcessor():
         else:
             found = False
             for i in range(len(self.offers)):
-                if self.offers[i]["px"] == level["px"]:
+                if self.offers[i]['px'] == level['px']:
                     self.offers[i] = level
                     found = True
                     break
@@ -65,12 +65,12 @@ class OrderBookProcessor():
                 self.offers.append(level)
 
     def _filter_closed(self):
-        self.bids = [x for x in self.bids if abs(float(x["qty"])) > 0]
-        self.offers = [x for x in self.offers if abs(float(x["qty"])) > 0]
+        self.bids = [x for x in self.bids if abs(float(x['qty'])) > 0]
+        self.offers = [x for x in self.offers if abs(float(x['qty'])) > 0]
 
     def _sort(self):
-        self.bids = sorted(self.bids, key=lambda x: float(x["px"]) * -1)
-        self.offers = sorted(self.offers, key=lambda x: float(x["px"]))
+        self.bids = sorted(self.bids, key=lambda x: float(x['px']) * -1)
+        self.offers = sorted(self.offers, key=lambda x: float(x['px']))
 
     def create_df(self, agg_level):
 
