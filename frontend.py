@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import sqlite3
 import pandas as pd
 from dash import html, dcc, Output, Input, Dash, dash_table
-from orderbook import product_id, agg_level
-import sqlite3
+from backend import product_id, agg_level, row_count
 
 app = Dash(__name__)
 
@@ -70,7 +70,9 @@ def update_mid(intervals):
     df = load_data()
 
     max_bid = df.loc[df['id'].str.contains('bid'), 'px'].max()
-    if agg_level == '1':
+
+    one_usd = '1'
+    if agg_level == one_usd:
         max_bid = int(max_bid)
 
     return f'{product_id}: {max_bid}'
@@ -87,10 +89,12 @@ def update_table(intervals):
 
 
 def load_data():
-    conn = sqlite3.connect('./prime_orderbook.db')
+    conn = sqlite3.connect('prime_orderbook.db')
     cursor = conn.cursor()
 
-    data = cursor.execute("SELECT * FROM book ORDER BY id + 0 ASC LIMIT 50")
+    query = f'SELECT * FROM book ORDER BY id + 0 ASC LIMIT {row_count}'
+
+    data = cursor.execute(query)
 
     df = pd.DataFrame(data)
 

@@ -11,67 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import asyncio
-import json, hmac, hashlib, base64, os, time, sys, math
-import websockets
+import json, math
 import pandas as pd
-import sqlite3
 from decimal import Decimal
-from dotenv import load_dotenv
-
-load_dotenv()
-
-ACCESS_KEY = os.environ.get("API_KEY")
-SECRET_KEY = os.environ.get("SECRET_KEY")
-PASSPHRASE = os.environ.get("PASSPHRASE")
-SVC_ACCOUNTID = os.environ.get("SVC_ACCOUNTID")
-
-URI = 'wss://ws-feed.prime.coinbase.com'
-TIMESTAMP = str(int(time.time()))
-conn = sqlite3.connect('./prime_orderbook.db')
-
-channel = 'l2_data'
-product_id = 'ETH-USD'
-agg_level = '0.1'
-
-
-async def main_loop():
-    while True:
-        try:
-            async with websockets.connect(URI, ping_interval=None, max_size=None) as websocket:
-                signature = sign(
-                    channel,
-                    ACCESS_KEY,
-                    SECRET_KEY,
-                    SVC_ACCOUNTID,
-                    product_id)
-                auth_message = json.dumps({
-                    'type': 'subscribe',
-                    'channel': channel,
-                    'access_key': ACCESS_KEY,
-                    'api_key_id': SVC_ACCOUNTID,
-                    'timestamp': TIMESTAMP,
-                    'passphrase': PASSPHRASE,
-                    'signature': signature,
-                    'product_ids': [product_id]
-                })
-                await websocket.send(auth_message)
-                while True:
-                    response = await websocket.recv()
-                    parsed = json.loads(response)
-
-                    if parsed["channel"] == "l2_data" and parsed["events"][0]["type"] == "snapshot":
-                        processor = OrderBookProcessor(response)
-                    elif processor is not None:
-                        processor.apply_update(response)
-                    if processor is not None:
-                        table = processor.create_df(agg_level=agg_level)
-                        print('updated')
-                        table.to_sql(
-                            'book', conn, if_exists='replace', index=False)
-                        sys.stdout.flush()
-        except websockets.ConnectionClosed:
-            continue
 
 
 class OrderBookProcessor():
@@ -132,8 +74,11 @@ class OrderBookProcessor():
 
     def create_df(self, agg_level):
 
-        bids = self.bids[:300]
-        asks = self.offers[:300]
+        bids_subset = int(len(self.bids)/16)
+        asks_subset = int(len(self.offers)/16)
+
+        bids = self.bids[:bids_subset]
+        asks = self.offers[:asks_subset]
 
         bid_df = pd.DataFrame(bids, columns=['px', 'qty'], dtype=float)
         ask_df = pd.DataFrame(asks, columns=['px', 'qty'], dtype=float)
@@ -180,17 +125,3 @@ class OrderBookProcessor():
         levels_df = levels_df[['px', 'qty']]
 
         return levels_df
-
-
-def sign(channel, key, secret, account_id, product_ids):
-    message = channel + key + account_id + TIMESTAMP + product_ids
-    signature = hmac.new(
-        SECRET_KEY.encode('utf-8'),
-        message.encode('utf-8'),
-        digestmod=hashlib.sha256).digest()
-    signature_b64 = base64.b64encode(signature).decode()
-    return signature_b64
-
-
-if __name__ == "__main__":
-    asyncio.run(main_loop())

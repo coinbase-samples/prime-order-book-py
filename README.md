@@ -9,7 +9,7 @@ All scripts are written in Python and tested with version 3.8.9.
 Simply clone the repo from your terminal window with the below command.
 
 ```bash
-git clone URL-GOES-HERE
+git clone https://github.com/coinbase-samples/prime-order-book-py
 ```
 
 To install dependencies, run the following: 
