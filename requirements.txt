@@ -1,0 +1,5 @@
+dash==2.9.1
+pandas==1.5.3
+websockets==10.4
+asyncio==3.4.3
+python-dotenv==1.0.0
