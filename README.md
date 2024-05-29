@@ -35,4 +35,4 @@ Once messages begin displaying in your command line (`updated`), run the next co
 python frontend.py
 ```
 
-For more information around Dash, please visit their [Github](https://github.com/plotly/dash) and [documentation](https://dash.plotly.com/introduction). 
+For more information around Dash, please visit their [GitHub](https://github.com/plotly/dash) and [documentation](https://dash.plotly.com/introduction). 
